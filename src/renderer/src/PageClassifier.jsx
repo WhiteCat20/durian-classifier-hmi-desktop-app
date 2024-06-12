@@ -1,135 +1,134 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import "./App.css";
 import axios from "axios";
-import { CameraCapture } from "./Camera";
+
 function PageClassifier() {
-  const videoRef = useRef(null);
-  const [capturedImage, setCapturedImage] = useState(null);
-  const [nomor, setNomor] = useState("");
-  const [kematangan, setKematangan] = useState("");
-  const [take, setTake] = useState("");
+  // Predictions Output
+  const [gasPrediction, setGasPrediction] = useState("None");
+  const [webcamPrediction, setWebcamPrediction] = useState("None");
+  //End of Predictions Output
 
-  useEffect(() => {
-    const startCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720 },
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+  // Prediction Files
+  const [gasFile, setGasFile] = useState(null);
+  const [gasFileName, setGasFileName] = useState("CNN GAS");
+  const [webcamFile, setWebcamFile] = useState(null);
+  const [webcamFileName, setWebcamFileName] = useState("CNN IMAGE");
+  //End of Prediction Files
+
+  //Functions which work for the Gas Files
+  const loadGas = async (event) => {
+    event.preventDefault(); // Prevent the default action
+    const formData = new FormData();
+    formData.append("file", gasFile);
+
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/load-cnn-gas",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         }
-      } catch (error) {
-        console.error("Error accessing the camera:", error);
-      }
-    };
-
-    startCamera();
-
-    // Clean up function to stop the camera when the component unmounts
-    return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject;
-        const tracks = stream.getTracks();
-        tracks.forEach((track) => track.stop());
-      }
-    };
-  }, []);
-  // Function to capture an image
-  const captureImage = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
-    const imageData = canvas.toDataURL("image/png");
-    setCapturedImage(imageData);
-    // saveImageLocally(imageData);
-    sendDataToBackend(imageData);
-  };
-
-  const sendDataToBackend = (imageData) => {
-    if (durian.nomor == "" && durian.kematangan == "" && durian.take == "") {
-      let stop = new Audio(fart);
-      stop.play();
-      alert("masukan nomor, kematangan, dan percobaan keberapa dulu...");
-    } else {
-      axios
-        .post("http://localhost:5000/upload-image", {
-          image: imageData,
-          nomor: durian.nomor,
-          kematangan: durian.kematangan,
-          take: durian.take,
-        })
-        .then((response) => {
-          // Handle response from backend
-          console.log(response.data);
-        })
-        .catch((error) => {
-          console.error("Error sending data to backend:", error);
-        });
-      let audio = new Audio(camera_click);
-      audio.play();
-    }
-  };
-  let buttonStyle = {
-    fontSize: "16px",
-  };
-
-  const cnnGasModel = async () => {
-    try {
-      const response = await axios.get("http://localhost:5000/cnn-gas-model");
+      );
       console.log(response);
+      setGasPrediction(response.data);
+      alert(`Predicted : ${response.data}`);
     } catch (error) {
       console.log(error);
     }
   };
-  const cnnClassify = async () => {
+  const handleGasFile = (event) => {
+    setGasFile(event.target.files[0]);
+    setGasFileName(event.target.files[0].name);
+    console.log(gasFileName);
+  };
+  // End of Functions which work for the Gas Files
+
+  //Functions which work for the Webcam Files
+  const loadWebcam = async (event) => {
+    event.preventDefault(); // Prevent the default action
+    const formData = new FormData();
+    formData.append("file", webcamFile);
     try {
-      const response = await axios.get("http://localhost:5000/gas-classifier");
+      const response = await axios.post(
+        "http://localhost:5000/load-cnn-webcam",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      console.log(response);
+      setWebcamPrediction(response.data);
+      alert(`Predicted : ${response.data}`);
     } catch (error) {
       console.log(error);
     }
   };
+  const handleWebcamFile = (event) => {
+    setWebcamFile(event.target.files[0]);
+    setWebcamFileName(event.target.files[0].name);
+    console.log(webcamFileName);
+  };
+  //End of Functions which work for the Webcam Files
+
+  const FileUpload = ({
+    prediction,
+    predictionText,
+    filename,
+    submit,
+    handle,
+  }) => {
+    return (
+      <div className="col-md-4 text-center">
+        <form onSubmit={submit}>
+          <label className="file-upload">
+            <input type="file" onChange={handle} />
+            <span className="text-muted">{filename}</span>
+          </label>
+          <div className={`prediction`}>
+            Predicted :{" "}
+            <span className={`prediction ${prediction}`}>{predictionText}</span>
+          </div>
+          <button type="submit" className="btn btn-primary mt-2 mb-2">
+            Classify
+          </button>
+        </form>
+      </div>
+    );
+  };
+
   return (
     <>
-      <div className="mt-4 d-flex justify-content-center  gap-3">
-        <div>
-          <video ref={videoRef} autoPlay muted style={{ width: "640px" }} />
-          <div className="d-flex justify-content-center">
-            <button className="btn btn-success" onClick={captureImage}>
-              <i class="fa-solid fa-camera"></i> Capture Image
-            </button>
-          </div>
-          {/* <CameraCapture /> */}
-        </div>
-        <div>
-          <div className="d-flex gap-2 align-items-center" style={buttonStyle}>
-            <h4>Ambil Data Aroma</h4>
-            <button
-              onClick={cnnGasModel}
-              type="button"
-              className="btn btn-primary"
-            >
-              Ambil
-            </button>
-          </div>
-          <div
-            className="mt-2 d-flex gap-2 align-items-center"
-            style={buttonStyle}
-          >
-            <h4>Classify Durian</h4>
-            <button
-              onClick={cnnClassify}
-              type="button"
-              className="btn btn-primary"
-            >
-              Mulai
-            </button>
-          </div>
-          <div className="mt-3">
-            <h4>CNN Gas Output : </h4>
-            <h4>CNN Image Output : </h4>
-          </div>
-        </div>
+      <div className="mt-4 d-flex justify-content-center flex-wrap gap-3">
+        <FileUpload
+          prediction={
+            gasPrediction === "ripe"
+              ? "text-success"
+              : gasPrediction === "unripe"
+              ? "text-danger"
+              : ""
+          }
+          predictionText={gasPrediction}
+          submit={loadGas}
+          filename={gasFileName}
+          handle={handleGasFile}
+        />
+        <FileUpload
+          prediction={
+            webcamPrediction === "ripe"
+              ? "text-success"
+              : webcamPrediction === "unripe"
+              ? "text-danger"
+              : ""
+          }
+          predictionText={webcamPrediction}
+          submit={loadWebcam}
+          filename={webcamFileName}
+          handle={handleWebcamFile}
+        />
       </div>
     </>
   );
